@@ -1,0 +1,43 @@
+## Visual Studio / Roslyn / Build Artifacts
+[Bb]in/
+[Oo]bj/
+out/
+[Tt]est[Rr]esults/
+*.trx
+*.coverage
+*.coveragexml
+
+## Visual Studio Cache & User Files
+.vs/
+.vscode/
+.idea/
+*.user
+*.userosscache
+*.suo
+*.sln.docstates
+*.userprefs
+
+## Secret, Environment & Configuration Files
+.env
+.env.*
+!.env.example
+*.local.json
+node_modules/
+dist/
+
+
+## Logs
+*.log
+*.log.*
+
+## Docker Local Mounts & Persistence
+postgres_data/
+resolveiq_data/
+.docker/
+
+## OS-generated files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store

@@ -1,0 +1,84 @@
+# ==============================================================================
+# ResolveIQ Render Blueprint (Infrastructure-as-Code)
+# ==============================================================================
+# Deploys:
+#   1. Managed PostgreSQL database (Free Tier)
+#   2. ResolveIQ ASP.NET Core Web API running as a Linux Docker container (Free Tier)
+#   3. ResolveIQ React + TypeScript + Vite Static Site SPA (Free Tier)
+# ==============================================================================
+
+services:
+  # ----------------------------------------------------------------------------
+  # ResolveIQ ASP.NET Core Web API Service
+  # ----------------------------------------------------------------------------
+  - type: web
+    name: resolveiq-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: free
+    region: oregon
+    healthCheckPath: /health/ready
+    autoDeploy: false
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: PORT
+        value: "10000"
+      - key: ASPNETCORE_HTTP_PORTS
+        value: "10000"
+      - key: ForwardedHeaders__ForwardAllProxies
+        value: "true"
+      - key: Swagger__Enabled
+        value: "false"
+      - key: ConnectionStrings__DefaultConnection
+        fromDatabase:
+          name: resolveiq-postgres
+          property: connectionString
+      - key: Jwt__Key
+        sync: false
+      - key: Jwt__Issuer
+        value: https://resolveiq-api.onrender.com
+      - key: Jwt__Audience
+        value: https://resolveiq-client.onrender.com
+      - key: Cors__AllowedOrigins__0
+        value: https://resolveiq-client.onrender.com
+      - key: Cors__AllowedOrigins__1
+        value: https://resolveiq.onrender.com
+      - key: AI__Enabled
+        value: "false"
+      - key: AI__Provider
+        value: "Gemini"
+      - key: AI__Gemini__Model
+        value: "gemini-1.5-flash"
+      - key: AI__Gemini__ApiKey
+        sync: false
+
+  # ----------------------------------------------------------------------------
+  # ResolveIQ Client (React 18 + TypeScript + Vite Static Site SPA)
+  # ----------------------------------------------------------------------------
+  - type: web
+    name: resolveiq-client
+    runtime: static
+    buildCommand: cd ResolveIQ.Client && npm install && npm run build
+    staticPublishPath: ./ResolveIQ.Client/dist
+    autoDeploy: false
+    envVars:
+      - key: VITE_API_BASE_URL
+        value: https://resolveiq-api.onrender.com
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+
+databases:
+  # ----------------------------------------------------------------------------
+  # Managed PostgreSQL Database
+  # ----------------------------------------------------------------------------
+  - name: resolveiq-postgres
+    databaseName: resolveiq_db
+    user: resolveiq_user
+    plan: free
+    region: oregon
+    postgresMajorVersion: "17"
+

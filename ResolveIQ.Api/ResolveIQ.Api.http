@@ -1,0 +1,258 @@
+@ResolveIQ.Api_HostAddress = http://localhost:5022
+@authToken = eyJhbGciOi...
+
+### 1. Register User
+POST {{ResolveIQ.Api_HostAddress}}/api/Auth/register
+Content-Type: application/json
+
+{
+  "fullName": "Alice Smith",
+  "email": "alice.smith@example.com",
+  "password": "Password123!"
+}
+
+### 2. Login User
+POST {{ResolveIQ.Api_HostAddress}}/api/Auth/login
+Content-Type: application/json
+
+{
+  "email": "alice.smith@example.com",
+  "password": "Password123!"
+}
+
+### 3. Change Password (Authenticated)
+POST {{ResolveIQ.Api_HostAddress}}/api/Auth/change-password
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "currentPassword": "Password123!",
+  "newPassword": "NewSecurePassword456!",
+  "confirmNewPassword": "NewSecurePassword456!"
+}
+
+### 4. Forgot Password (Request short-lived reset token)
+POST {{ResolveIQ.Api_HostAddress}}/api/Auth/forgot-password
+Content-Type: application/json
+
+{
+  "email": "alice.smith@example.com"
+}
+
+### 5. Reset Password (Using single-use token received via email)
+POST {{ResolveIQ.Api_HostAddress}}/api/Auth/reset-password
+Content-Type: application/json
+
+{
+  "email": "alice.smith@example.com",
+  "token": "RAW_RESET_TOKEN_FROM_EMAIL",
+  "newPassword": "NewResetPassword789!",
+  "confirmNewPassword": "NewResetPassword789!"
+}
+
+### 6. Get Current User Profile (Me)
+GET {{ResolveIQ.Api_HostAddress}}/api/Users/me
+Authorization: Bearer {{authToken}}
+Accept: application/json
+
+### 7. Update Current User Profile (Me)
+PUT {{ResolveIQ.Api_HostAddress}}/api/Users/me
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "fullName": "Alice Johnson",
+  "email": "alice.johnson@example.com"
+}
+
+### 8. Get User by ID (Self or Admin)
+GET {{ResolveIQ.Api_HostAddress}}/api/Users/1
+Authorization: Bearer {{authToken}}
+Accept: application/json
+
+### 9. List All Users (Admin only)
+GET {{ResolveIQ.Api_HostAddress}}/api/Users
+Authorization: Bearer {{authToken}}
+Accept: application/json
+
+### 10. Update User Role (Admin only)
+PATCH {{ResolveIQ.Api_HostAddress}}/api/Users/2/role
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "role": "Agent"
+}
+
+### 11. Search, Filter, Sort, and Paginate Tickets
+GET {{ResolveIQ.Api_HostAddress}}/api/Tickets?search=database&status=Open&priority=High&sortBy=createdAt&sortDirection=desc&page=1&pageSize=10
+Authorization: Bearer {{authToken}}
+Accept: application/json
+
+### 12. Get Assigned Tickets (Agent / Admin)
+GET {{ResolveIQ.Api_HostAddress}}/api/Tickets/assigned?status=InProgress&page=1&pageSize=10
+Authorization: Bearer {{authToken}}
+Accept: application/json
+
+### 13. Create Ticket
+POST {{ResolveIQ.Api_HostAddress}}/api/Tickets
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "title": "Database connection timeouts in production",
+  "description": "API latency spikes due to pool exhaustion",
+  "priority": "Critical"
+}
+
+### 14. Get Ticket by ID
+GET {{ResolveIQ.Api_HostAddress}}/api/Tickets/1
+Authorization: Bearer {{authToken}}
+Accept: application/json
+
+### 15. Get Ticket SLA Status
+GET {{ResolveIQ.Api_HostAddress}}/api/Tickets/1/sla
+Authorization: Bearer {{authToken}}
+Accept: application/json
+
+### 16. Get Ticket Audit History
+GET {{ResolveIQ.Api_HostAddress}}/api/Tickets/1/history
+Authorization: Bearer {{authToken}}
+Accept: application/json
+
+### 17. Update Ticket Status
+PATCH {{ResolveIQ.Api_HostAddress}}/api/Tickets/1/status
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "status": "InProgress"
+}
+
+### 18. Assign Ticket
+PATCH {{ResolveIQ.Api_HostAddress}}/api/Tickets/1/assign
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "assignedToUserId": 2
+}
+
+### 19. Add Ticket Comment
+POST {{ResolveIQ.Api_HostAddress}}/api/Tickets/1/comments
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "comment": "Investigating connection pool sizing."
+}
+
+### 20. Get Ticket Comments
+GET {{ResolveIQ.Api_HostAddress}}/api/Tickets/1/comments
+Authorization: Bearer {{authToken}}
+Accept: application/json
+
+### 21. Dashboard Analytics (Admin & Agent)
+GET {{ResolveIQ.Api_HostAddress}}/api/Tickets/dashboard
+Authorization: Bearer {{authToken}}
+Accept: application/json
+
+### 22. Get Notifications (Paginated, filter by unread/read)
+GET {{ResolveIQ.Api_HostAddress}}/api/Notifications?isRead=false&page=1&pageSize=10
+Authorization: Bearer {{authToken}}
+Accept: application/json
+
+### 23. Get Unread Notifications Count
+GET {{ResolveIQ.Api_HostAddress}}/api/Notifications/unread-count
+Authorization: Bearer {{authToken}}
+Accept: application/json
+
+### 24. Mark Notification as Read
+PATCH {{ResolveIQ.Api_HostAddress}}/api/Notifications/1/read
+Authorization: Bearer {{authToken}}
+Accept: application/json
+
+### 25. Mark All Notifications as Read
+PATCH {{ResolveIQ.Api_HostAddress}}/api/Notifications/read-all
+Authorization: Bearer {{authToken}}
+Accept: application/json
+
+### 26. Get Escalated Tickets (Admin only)
+GET {{ResolveIQ.Api_HostAddress}}/api/Tickets/escalations
+Authorization: Bearer {{authToken}}
+Accept: application/json
+
+### 27. Health Check - Liveness Probe
+GET {{ResolveIQ.Api_HostAddress}}/health/live
+Accept: application/json
+
+### 28. Health Check - Readiness Probe (Database & Infrastructure)
+GET {{ResolveIQ.Api_HostAddress}}/health/ready
+Accept: application/json
+
+### 29. Root Verification Probe
+GET {{ResolveIQ.Api_HostAddress}}/
+
+### 30. AI - Classify Proposed Ticket Content
+POST {{ResolveIQ.Api_HostAddress}}/api/AI/classify-ticket
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "title": "VPN connection failure after Wi-Fi roaming",
+  "description": "Whenever I switch between office Wi-Fi access points, the corporate VPN tunnel drops and reports certificate handshake failure."
+}
+
+### 31. AI - Classify Existing Ticket by ID
+POST {{ResolveIQ.Api_HostAddress}}/api/AI/classify-ticket
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "ticketId": 1
+}
+
+### 32. AI - Recommend Priority for Proposed Ticket
+POST {{ResolveIQ.Api_HostAddress}}/api/AI/recommend-priority
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "title": "Core PostgreSQL replica failover latency spike",
+  "description": "Read queries are experiencing 45-second latency spikes affecting checkout operations.",
+  "impact": "OrganizationWide",
+  "urgency": "Critical"
+}
+
+### 33. AI - Troubleshoot Ticket by ID (Grounded with Knowledge Articles & Similar Tickets)
+POST {{ResolveIQ.Api_HostAddress}}/api/AI/troubleshoot/1
+Authorization: Bearer {{authToken}}
+Accept: application/json
+
+### 34. Knowledge Base - Search / List Articles
+GET {{ResolveIQ.Api_HostAddress}}/api/KnowledgeBase?search=vpn&page=1&pageSize=10
+Authorization: Bearer {{authToken}}
+Accept: application/json
+
+### 35. Knowledge Base - Get Article by ID
+GET {{ResolveIQ.Api_HostAddress}}/api/KnowledgeBase/1
+Authorization: Bearer {{authToken}}
+Accept: application/json
+
+### 36. Knowledge Base - Create Article (Agent / Admin)
+POST {{ResolveIQ.Api_HostAddress}}/api/KnowledgeBase
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "title": "Resolving VPN Handshake Drops during Wi-Fi Roaming",
+  "content": "Step 1: Check driver version. Step 2: Clear local IPsec certificate cache using certutil. Step 3: Re-authenticate through MFA portal.",
+  "category": "Network",
+  "tags": "vpn,network,wifi,certificate",
+  "isPublished": true
+}
+
+### 37. Knowledge Base - Delete Article (Admin only)
+DELETE {{ResolveIQ.Api_HostAddress}}/api/KnowledgeBase/1
+Authorization: Bearer {{authToken}}
+

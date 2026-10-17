@@ -1,0 +1,92 @@
+name: ResolveIQ CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # ============================================================================
+  # 1. Build, Test, Migration Validation & Docker Image Compilation
+  # ============================================================================
+  build-and-test:
+    name: Build, Test & Validate Dockerfile
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Cache NuGet Packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', 'ResolveIQ.slnx') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Restore Dependencies
+        run: dotnet restore ResolveIQ.slnx
+
+      - name: Build Solution (Release)
+        run: dotnet build ResolveIQ.slnx --configuration Release --no-restore
+
+      - name: Run Automated Test Suite
+        run: dotnet test ResolveIQ.slnx --configuration Release --no-build --verbosity normal --logger "trx;LogFileName=test-results.trx"
+
+      - name: Install EF Core CLI Tool
+        run: dotnet tool install --global dotnet-ef
+
+      - name: Validate EF Core Migration Script Generation
+        run: dotnet ef migrations script --idempotent --project ResolveIQ.Api --output migration_ci_bundle.sql
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Validate Multi-Stage Dockerfile Build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false
+          tags: resolveiq-api:ci-test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ============================================================================
+  # 2. Production Deployment (Gated by Secrets & Production Environment)
+  # ============================================================================
+  deploy:
+    name: Deploy to Production (Gated)
+    needs: build-and-test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Check Deployment Credentials
+        id: check-secrets
+        run: |
+          if [ -z "${{ secrets.DEPLOY_HOOK_URL }}" ] && [ -z "${{ secrets.DOCKER_REGISTRY_PASSWORD }}" ]; then
+            echo "DEPLOY_READY=false" >> $GITHUB_OUTPUT
+            echo "::notice title=Deployment Gated::No deployment credentials configured. Set DEPLOY_HOOK_URL or DOCKER_REGISTRY_PASSWORD in GitHub repository secrets to enable automatic production deployment."
+          else
+            echo "DEPLOY_READY=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Trigger Deployment Hook (When Configured)
+        if: steps.check-secrets.outputs.DEPLOY_READY == 'true' && secrets.DEPLOY_HOOK_URL != ''
+        run: |
+          echo "Triggering automated deployment webhook..."
+          curl -X POST -s -S "${{ secrets.DEPLOY_HOOK_URL }}"
+          echo "Deployment triggered successfully."

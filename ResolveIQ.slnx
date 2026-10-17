@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="ResolveIQ.Api/ResolveIQ.Api.csproj" />
+  <Project Path="ResolveIQ.Tests/ResolveIQ.Tests.csproj" />
+</Solution>
