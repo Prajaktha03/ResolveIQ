@@ -1,5 +1,3 @@
-## LIVE DEMO : https://resolveiq-client.onrender.com/
-
 # ResolveIQ Backend API
 
 ResolveIQ is an enterprise IT service management and ticket tracking Web API built on .NET 10, ASP.NET Core, Entity Framework Core, PostgreSQL, and JWT Bearer authentication.
