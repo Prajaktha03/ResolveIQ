@@ -317,34 +317,18 @@ app.Logger.LogInformation(
     string.Join(", ", allowedOrigins),
     app.Environment.IsDevelopment());
 
-// One-time command-line Admin setup
-if (Environment.GetEnvironmentVariable("RESOLVEIQ_SETUP_ADMIN") == "true")
+// Idempotent initial Admin provisioning from environment variables (RESOLVEIQ_ADMIN_* and RESOLVEIQ_ADMIN2_*)
+using (var scope = app.Services.CreateScope())
 {
-    var fullName = Environment.GetEnvironmentVariable("RESOLVEIQ_ADMIN_NAME");
-    var email = Environment.GetEnvironmentVariable("RESOLVEIQ_ADMIN_EMAIL");
-    var password = Environment.GetEnvironmentVariable("RESOLVEIQ_ADMIN_PASSWORD");
-
-    if (string.IsNullOrWhiteSpace(fullName) ||
-        string.IsNullOrWhiteSpace(email) ||
-        string.IsNullOrWhiteSpace(password) ||
-        password.Length < 8)
+    try
     {
-        throw new InvalidOperationException(
-            "Provide an Admin name, email, and password of at least 8 characters.");
+        var setupService = scope.ServiceProvider.GetRequiredService<RoleSetupService>();
+        await setupService.ProvisionConfiguredAdminsAsync(app.Configuration);
     }
-
-    using var scope = app.Services.CreateScope();
-
-    var setupService = scope.ServiceProvider
-        .GetRequiredService<RoleSetupService>();
-
-    await setupService.CreateInitialAdminAsync(
-        fullName,
-        email,
-        password);
-
-    Console.WriteLine("Initial Admin created successfully.");
-    return;
+    catch (Exception ex)
+    {
+        app.Logger.LogError(ex, "Unexpected error occurred during startup Admin provisioning.");
+    }
 }
 
 // 0. Forwarded headers for reverse proxies (must run first to populate RemoteIpAddress & Scheme)

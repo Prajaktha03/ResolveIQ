@@ -53,6 +53,18 @@ services:
         value: "gemini-1.5-flash"
       - key: AI__Gemini__ApiKey
         sync: false
+      - key: RESOLVEIQ_ADMIN_NAME
+        value: "Nauman Shah"
+      - key: RESOLVEIQ_ADMIN_EMAIL
+        value: "naumans528@gmail.com"
+      - key: RESOLVEIQ_ADMIN_PASSWORD
+        sync: false
+      - key: RESOLVEIQ_ADMIN2_NAME
+        value: "Prajaktha"
+      - key: RESOLVEIQ_ADMIN2_EMAIL
+        value: "prajaktha3@gmail.com"
+      - key: RESOLVEIQ_ADMIN2_PASSWORD
+        sync: false
 
   # ----------------------------------------------------------------------------
   # ResolveIQ Client (React 18 + TypeScript + Vite Static Site SPA)
