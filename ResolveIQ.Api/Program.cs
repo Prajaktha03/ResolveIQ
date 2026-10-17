@@ -27,7 +27,7 @@ if (!string.IsNullOrEmpty(renderPort))
 
 // PostgreSQL database
 var rawConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-var connectionString = NormalizeConnectionString(rawConnectionString);
+var connectionString = ConnectionStringHelper.Normalize(rawConnectionString);
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
@@ -339,36 +339,3 @@ app.MapControllers();
 app.MapHub<NotificationHub>("/hubs/notifications");
 
 app.Run();
-
-static string? NormalizeConnectionString(string? connectionString)
-{
-    if (string.IsNullOrWhiteSpace(connectionString))
-    {
-        return connectionString;
-    }
-
-    if (connectionString.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase) ||
-        connectionString.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase))
-    {
-        var uri = new Uri(connectionString);
-        var userInfo = uri.UserInfo.Split(':', 2);
-        var username = userInfo.Length > 0 ? Uri.UnescapeDataString(userInfo[0]) : "";
-        var password = userInfo.Length > 1 ? Uri.UnescapeDataString(userInfo[1]) : "";
-        var database = uri.AbsolutePath.TrimStart('/');
-        var port = uri.Port > 0 ? uri.Port : 5432;
-
-        var builder = new Npgsql.NpgsqlConnectionStringBuilder
-        {
-            Host = uri.Host,
-            Port = port,
-            Database = database,
-            Username = username,
-            Password = password,
-            SslMode = Npgsql.SslMode.Prefer
-        };
-
-        return builder.ConnectionString;
-    }
-
-    return connectionString;
-}

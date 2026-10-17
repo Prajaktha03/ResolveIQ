@@ -96,9 +96,69 @@ public class DeploymentAndProductionConfigurationTests
 
         Assert.Contains("FROM mcr.microsoft.com/dotnet/sdk:10.0", dockerfileContent);
         Assert.Contains("FROM mcr.microsoft.com/dotnet/aspnet:10.0", dockerfileContent);
+        Assert.Contains("libgssapi-krb5-2", dockerfileContent);
         Assert.Contains("USER app", dockerfileContent);
         Assert.Contains("EXPOSE 8080", dockerfileContent);
         Assert.Contains("ENTRYPOINT", dockerfileContent);
+    }
+
+    [Fact]
+    public void ConnectionStringHelper_NormalizesRenderUri_DisablesGssAndEnablesSsl()
+    {
+        var renderUri = "postgres://resolveiq_user:super_secret_pw@dpg-c12345678-a:5432/resolveiq_db";
+        var normalized = ConnectionStringHelper.Normalize(renderUri);
+
+        Assert.NotNull(normalized);
+        var builder = new Npgsql.NpgsqlConnectionStringBuilder(normalized);
+
+        Assert.Equal("dpg-c12345678-a", builder.Host);
+        Assert.Equal(5432, builder.Port);
+        Assert.Equal("resolveiq_db", builder.Database);
+        Assert.Equal("resolveiq_user", builder.Username);
+        Assert.Equal("super_secret_pw", builder.Password);
+        Assert.Equal(Npgsql.GssEncryptionMode.Disable, builder.GssEncryptionMode);
+        Assert.Equal(Npgsql.SslMode.Prefer, builder.SslMode);
+    }
+
+    [Fact]
+    public void ConnectionStringHelper_NormalizesRenderUriWithSslQueryParam()
+    {
+        var renderUri = "postgresql://resolveiq_user:super_secret_pw@dpg-c12345678-a.oregon-postgres.render.com:5432/resolveiq_db?sslmode=require";
+        var normalized = ConnectionStringHelper.Normalize(renderUri);
+
+        Assert.NotNull(normalized);
+        var builder = new Npgsql.NpgsqlConnectionStringBuilder(normalized);
+
+        Assert.Equal("dpg-c12345678-a.oregon-postgres.render.com", builder.Host);
+        Assert.Equal(Npgsql.SslMode.Require, builder.SslMode);
+        Assert.Equal(Npgsql.GssEncryptionMode.Disable, builder.GssEncryptionMode);
+    }
+
+    [Fact]
+    public void ConnectionStringHelper_NormalizesKeyValueString_DisablesGssAndSetsSslForRemote()
+    {
+        var kvString = "Host=dpg-c12345678-a;Database=resolveiq_db;Username=postgres;Password=test;";
+        var normalized = ConnectionStringHelper.Normalize(kvString);
+
+        Assert.NotNull(normalized);
+        var builder = new Npgsql.NpgsqlConnectionStringBuilder(normalized);
+
+        Assert.Equal("dpg-c12345678-a", builder.Host);
+        Assert.Equal(Npgsql.GssEncryptionMode.Disable, builder.GssEncryptionMode);
+        Assert.Equal(Npgsql.SslMode.Prefer, builder.SslMode);
+    }
+
+    [Fact]
+    public void ConnectionStringHelper_PreservesLocalhostWithoutForcingSsl()
+    {
+        var localString = "Host=localhost;Port=5432;Database=resolveiq_db;Username=postgres;Password=test;";
+        var normalized = ConnectionStringHelper.Normalize(localString);
+
+        Assert.NotNull(normalized);
+        var builder = new Npgsql.NpgsqlConnectionStringBuilder(normalized);
+
+        Assert.Equal("localhost", builder.Host);
+        Assert.Equal(Npgsql.GssEncryptionMode.Disable, builder.GssEncryptionMode);
     }
 
     [Fact]

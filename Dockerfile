@@ -28,6 +28,12 @@ RUN dotnet publish "ResolveIQ.Api.csproj" -c Release -o /app/publish /p:UseAppHo
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 WORKDIR /app
 
+# Install Kerberos GSSAPI library required by Npgsql on Ubuntu runtime
+USER root
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libgssapi-krb5-2 \
+    && rm -rf /var/lib/apt/lists/*
+
 # Expose internal listening ports (8080 for Docker Compose, 10000 for Render)
 EXPOSE 8080 10000
 ENV ASPNETCORE_HTTP_PORTS=8080
