@@ -235,4 +235,33 @@ public class DeploymentAndProductionConfigurationTests
         Assert.Contains("condition: service_healthy", composeContent);
         Assert.Contains("resolveiq_network", composeContent);
     }
+
+    [Fact]
+    public void RenderYaml_ConfiguresBackendUrlAndPreservesAudience()
+    {
+        var baseDir = AppContext.BaseDirectory;
+        var currentDir = new DirectoryInfo(baseDir);
+        string? renderYamlPath = null;
+
+        while (currentDir != null)
+        {
+            var candidate = Path.Combine(currentDir.FullName, "render.yaml");
+            if (File.Exists(candidate))
+            {
+                renderYamlPath = candidate;
+                break;
+            }
+            currentDir = currentDir.Parent;
+        }
+
+        Assert.NotNull(renderYamlPath);
+        var content = File.ReadAllText(renderYamlPath);
+
+        Assert.Contains("value: https://resolveiq-x1fk.onrender.com", content);
+        Assert.Contains("key: VITE_API_BASE_URL", content);
+        Assert.Contains("key: Jwt__Issuer", content);
+        Assert.Contains("key: Jwt__Audience", content);
+        Assert.Contains("value: https://resolveiq-client.onrender.com", content);
+    }
 }
+

@@ -38,7 +38,7 @@ services:
       - key: Jwt__Key
         sync: false
       - key: Jwt__Issuer
-        value: https://resolveiq-api.onrender.com
+        value: https://resolveiq-x1fk.onrender.com
       - key: Jwt__Audience
         value: https://resolveiq-client.onrender.com
       - key: Cors__AllowedOrigins__0
@@ -65,7 +65,7 @@ services:
     autoDeploy: false
     envVars:
       - key: VITE_API_BASE_URL
-        value: https://resolveiq-api.onrender.com
+        value: https://resolveiq-x1fk.onrender.com
     routes:
       - type: rewrite
         source: /*
