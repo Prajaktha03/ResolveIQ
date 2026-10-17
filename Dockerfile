@@ -23,8 +23,7 @@ RUN dotnet build "ResolveIQ.Api.csproj" -c Release -o /app/build --no-restore
 
 # Stage 2: Publish
 FROM build AS publish
-RUN dotnet publish "ResolveIQ.Api.csproj" -c Release -o /app/publish --no-build /p:UseAppHost=false
-
+RUN dotnet publish "ResolveIQ.Api.csproj" -c Release -o /app/publish /p:UseAppHost=false
 # Stage 3: Production Runtime
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 WORKDIR /app
