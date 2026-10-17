@@ -116,26 +116,75 @@ builder.Services
 builder.Services.AddAuthorization();
 
 // Explicit, configurable CORS policy
-var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
-    ?? (builder.Environment.IsDevelopment()
-        ? ["http://localhost:3000", "https://localhost:3000", "http://localhost:5173", "https://localhost:5173"]
-        : []);
+var configuredOrigins = new List<string>();
+
+// Read array configuration (e.g. Cors:AllowedOrigins:0 or JSON array)
+var arrayOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
+if (arrayOrigins != null)
+{
+    configuredOrigins.AddRange(arrayOrigins);
+}
+
+// Read scalar or delimited configuration (e.g. Cors__AllowedOrigins="https://...")
+var scalarOrigins = builder.Configuration["Cors:AllowedOrigins"] ?? builder.Configuration["Cors__AllowedOrigins"];
+if (!string.IsNullOrWhiteSpace(scalarOrigins))
+{
+    configuredOrigins.AddRange(scalarOrigins.Split([',', ';'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+}
+
+// Normalize origins: trim whitespace, strip quotes, and remove trailing slashes
+var allowedOrigins = configuredOrigins
+    .Select(o => o.Trim().Trim('"', '\'').TrimEnd('/'))
+    .Where(o => !string.IsNullOrWhiteSpace(o))
+    .Distinct(StringComparer.OrdinalIgnoreCase)
+    .ToArray();
+
+if (allowedOrigins.Length == 0 && builder.Environment.IsDevelopment())
+{
+    allowedOrigins = ["http://localhost:3000", "https://localhost:3000", "http://localhost:5173", "https://localhost:5173"];
+}
 
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("DefaultCorsPolicy", policy =>
     {
-        if (allowedOrigins.Length > 0)
+        policy.SetIsOriginAllowed(origin =>
         {
-            policy.WithOrigins(allowedOrigins)
-                .AllowAnyHeader()
-                .AllowAnyMethod()
-                .AllowCredentials();
-        }
-        else
-        {
-            policy.SetIsOriginAllowed(_ => false);
-        }
+            if (string.IsNullOrWhiteSpace(origin))
+            {
+                return false;
+            }
+
+            var normalized = origin.Trim().Trim('"', '\'').TrimEnd('/');
+
+            // 1. Explicitly configured origins
+            if (allowedOrigins.Any(o => string.Equals(o, normalized, StringComparison.OrdinalIgnoreCase)))
+            {
+                return true;
+            }
+
+            // 2. ResolveIQ client deployments on Render (*.onrender.com)
+            if (Uri.TryCreate(origin, UriKind.Absolute, out var uri))
+            {
+                if (uri.Host.Equals("resolveiq-client.onrender.com", StringComparison.OrdinalIgnoreCase) ||
+                    (uri.Host.EndsWith(".onrender.com", StringComparison.OrdinalIgnoreCase) &&
+                     uri.Host.StartsWith("resolveiq", StringComparison.OrdinalIgnoreCase)))
+                {
+                    return true;
+                }
+
+                // 3. Localhost and loopback origins in Development
+                if (builder.Environment.IsDevelopment() && uri.IsLoopback)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        })
+        .AllowAnyHeader()
+        .AllowAnyMethod()
+        .AllowCredentials();
     });
 });
 
@@ -261,6 +310,12 @@ if (!string.IsNullOrWhiteSpace(connectionString))
         // Suppress diagnostic errors
     }
 }
+
+// Safe diagnostic log of effective CORS origins configuration
+app.Logger.LogInformation(
+    "CORS policy configured: AllowedOrigins=[{Origins}], DevelopmentMode={IsDevelopment}",
+    string.Join(", ", allowedOrigins),
+    app.Environment.IsDevelopment());
 
 // One-time command-line Admin setup
 if (Environment.GetEnvironmentVariable("RESOLVEIQ_SETUP_ADMIN") == "true")

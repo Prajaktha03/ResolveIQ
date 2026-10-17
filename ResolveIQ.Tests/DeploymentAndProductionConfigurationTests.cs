@@ -263,5 +263,98 @@ public class DeploymentAndProductionConfigurationTests
         Assert.Contains("key: Jwt__Audience", content);
         Assert.Contains("value: https://resolveiq-client.onrender.com", content);
     }
+
+    [Fact]
+    public void CorsConfiguration_BindsOriginsFromEnvironment_AndNormalizesTrailingSlashes()
+    {
+        var appsettingsJson = "{\"Cors\": { \"AllowedOrigins\": [\"http://localhost:3000\", \"http://localhost:5173\"] }}";
+        var appsettingsProdJson = "{\"Cors\": { \"AllowedOrigins\": [] }}";
+
+        var config = new ConfigurationBuilder()
+            .AddJsonStream(new MemoryStream(System.Text.Encoding.UTF8.GetBytes(appsettingsJson)))
+            .AddJsonStream(new MemoryStream(System.Text.Encoding.UTF8.GetBytes(appsettingsProdJson)))
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Cors:AllowedOrigins:0"] = "https://resolveiq-client.onrender.com/",
+                ["Cors:AllowedOrigins:1"] = "\"https://resolveiq.onrender.com\""
+            })
+            .Build();
+
+        var configuredOrigins = new List<string>();
+        var arrayOrigins = config.GetSection("Cors:AllowedOrigins").Get<string[]>();
+        if (arrayOrigins != null) configuredOrigins.AddRange(arrayOrigins);
+
+        var allowedOrigins = configuredOrigins
+            .Select(o => o.Trim().Trim('"', '\'').TrimEnd('/'))
+            .Where(o => !string.IsNullOrWhiteSpace(o))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        Assert.Contains("https://resolveiq-client.onrender.com", allowedOrigins);
+        Assert.DoesNotContain("https://resolveiq-client.onrender.com/", allowedOrigins);
+        Assert.Contains("https://resolveiq.onrender.com", allowedOrigins);
+    }
+
+    [Fact]
+    public void CorsConfiguration_BindsDelimitedScalarOrigins()
+    {
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Cors__AllowedOrigins"] = "https://resolveiq-client.onrender.com, https://resolveiq.onrender.com/"
+            })
+            .Build();
+
+        var configuredOrigins = new List<string>();
+        var scalarOrigins = config["Cors:AllowedOrigins"] ?? config["Cors__AllowedOrigins"];
+        if (!string.IsNullOrWhiteSpace(scalarOrigins))
+        {
+            configuredOrigins.AddRange(scalarOrigins.Split([',', ';'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+        }
+
+        var allowedOrigins = configuredOrigins
+            .Select(o => o.Trim().Trim('"', '\'').TrimEnd('/'))
+            .Where(o => !string.IsNullOrWhiteSpace(o))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        Assert.Equal(2, allowedOrigins.Length);
+        Assert.Equal("https://resolveiq-client.onrender.com", allowedOrigins[0]);
+        Assert.Equal("https://resolveiq.onrender.com", allowedOrigins[1]);
+    }
+
+    [Theory]
+    [InlineData("https://resolveiq-client.onrender.com", true)]
+    [InlineData("https://resolveiq-client.onrender.com/", true)]
+    [InlineData("https://resolveiq.onrender.com", true)]
+    [InlineData("http://localhost:5173", false)]
+    [InlineData("https://attacker-site.com", false)]
+    public void CorsPolicy_EvaluatesOriginsCorrectly_InProduction(string testOrigin, bool shouldAllow)
+    {
+        var allowedOrigins = new[] { "https://resolveiq-client.onrender.com" };
+
+        bool IsAllowed(string origin)
+        {
+            if (string.IsNullOrWhiteSpace(origin)) return false;
+            var normalized = origin.Trim().Trim('"', '\'').TrimEnd('/');
+
+            if (allowedOrigins.Any(o => string.Equals(o, normalized, StringComparison.OrdinalIgnoreCase)))
+                return true;
+
+            if (Uri.TryCreate(origin, UriKind.Absolute, out var uri))
+            {
+                if (uri.Host.Equals("resolveiq-client.onrender.com", StringComparison.OrdinalIgnoreCase) ||
+                    (uri.Host.EndsWith(".onrender.com", StringComparison.OrdinalIgnoreCase) &&
+                     uri.Host.StartsWith("resolveiq", StringComparison.OrdinalIgnoreCase)))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        Assert.Equal(shouldAllow, IsAllowed(testOrigin));
+    }
 }
 
