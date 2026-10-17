@@ -20,7 +20,7 @@ public static class ConnectionStringHelper
             var userInfo = uri.UserInfo.Split(':', 2);
             var username = userInfo.Length > 0 ? Uri.UnescapeDataString(userInfo[0]) : "";
             var password = userInfo.Length > 1 ? Uri.UnescapeDataString(userInfo[1]) : "";
-            var database = uri.AbsolutePath.TrimStart('/');
+            var database = uri.AbsolutePath.Trim('/');
             var port = uri.Port > 0 ? uri.Port : 5432;
 
             builder = new NpgsqlConnectionStringBuilder
@@ -71,7 +71,9 @@ public static class ConnectionStringHelper
         builder.GssEncryptionMode = GssEncryptionMode.Disable;
 
         // For Render / Cloud remote PostgreSQL hosts:
-        // Ensure SSL is supported and self-signed certificates (used by Render internal DB) are trusted.
+        // Render internal PostgreSQL instances use self-signed TLS certificates.
+        // TrustServerCertificate=true allows encrypted TLS communication without failing CA chain validation.
+        // Security trade-off: Skips public CA verification; acceptable on Render's isolated internal network.
         var isLocalhost = string.Equals(builder.Host, "localhost", StringComparison.OrdinalIgnoreCase) ||
                           string.Equals(builder.Host, "127.0.0.1", StringComparison.OrdinalIgnoreCase) ||
                           string.Equals(builder.Host, "db", StringComparison.OrdinalIgnoreCase);
@@ -82,6 +84,10 @@ public static class ConnectionStringHelper
             {
                 builder.SslMode = SslMode.Prefer;
             }
+
+#pragma warning disable CS0618 // TrustServerCertificate is obsolete in Npgsql 8+ but maintained for compatibility
+            builder.TrustServerCertificate = true;
+#pragma warning restore CS0618
         }
 
         return builder.ConnectionString;

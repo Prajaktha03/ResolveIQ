@@ -118,6 +118,9 @@ public class DeploymentAndProductionConfigurationTests
         Assert.Equal("super_secret_pw", builder.Password);
         Assert.Equal(Npgsql.GssEncryptionMode.Disable, builder.GssEncryptionMode);
         Assert.Equal(Npgsql.SslMode.Prefer, builder.SslMode);
+#pragma warning disable CS0618
+        Assert.True(builder.TrustServerCertificate);
+#pragma warning restore CS0618
     }
 
     [Fact]
@@ -132,6 +135,9 @@ public class DeploymentAndProductionConfigurationTests
         Assert.Equal("dpg-c12345678-a.oregon-postgres.render.com", builder.Host);
         Assert.Equal(Npgsql.SslMode.Require, builder.SslMode);
         Assert.Equal(Npgsql.GssEncryptionMode.Disable, builder.GssEncryptionMode);
+#pragma warning disable CS0618
+        Assert.True(builder.TrustServerCertificate);
+#pragma warning restore CS0618
     }
 
     [Fact]
@@ -146,6 +152,28 @@ public class DeploymentAndProductionConfigurationTests
         Assert.Equal("dpg-c12345678-a", builder.Host);
         Assert.Equal(Npgsql.GssEncryptionMode.Disable, builder.GssEncryptionMode);
         Assert.Equal(Npgsql.SslMode.Prefer, builder.SslMode);
+#pragma warning disable CS0618
+        Assert.True(builder.TrustServerCertificate);
+#pragma warning restore CS0618
+    }
+
+    [Fact]
+    public void ConnectionStringHelper_NormalizesUriWithTrailingSlash_TrimsDatabaseAndEnablesTrustServerCertificate()
+    {
+        var renderUri = "postgres://resolveiq_user:super_secret_pw@dpg-c12345678-a/resolveiq_db/";
+        var normalized = ConnectionStringHelper.Normalize(renderUri);
+
+        Assert.NotNull(normalized);
+        var builder = new Npgsql.NpgsqlConnectionStringBuilder(normalized);
+
+        Assert.Equal("dpg-c12345678-a", builder.Host);
+        Assert.Equal(5432, builder.Port);
+        Assert.Equal("resolveiq_db", builder.Database);
+        Assert.Equal(Npgsql.GssEncryptionMode.Disable, builder.GssEncryptionMode);
+        Assert.Equal(Npgsql.SslMode.Prefer, builder.SslMode);
+#pragma warning disable CS0618
+        Assert.True(builder.TrustServerCertificate);
+#pragma warning restore CS0618
     }
 
     [Fact]
@@ -159,6 +187,27 @@ public class DeploymentAndProductionConfigurationTests
 
         Assert.Equal("localhost", builder.Host);
         Assert.Equal(Npgsql.GssEncryptionMode.Disable, builder.GssEncryptionMode);
+#pragma warning disable CS0618
+        Assert.False(builder.TrustServerCertificate);
+#pragma warning restore CS0618
+    }
+
+    [Fact]
+    public void ConnectionStringHelper_PreservesLocalhostAliasesWithoutTrustServerCertificate()
+    {
+        var ipLoopback = "Host=127.0.0.1;Port=5432;Database=resolveiq_db;Username=postgres;Password=test;";
+        var normalizedIp = ConnectionStringHelper.Normalize(ipLoopback);
+        var builderIp = new Npgsql.NpgsqlConnectionStringBuilder(normalizedIp);
+#pragma warning disable CS0618
+        Assert.False(builderIp.TrustServerCertificate);
+#pragma warning restore CS0618
+
+        var dockerDb = "Host=db;Port=5432;Database=resolveiq_db;Username=postgres;Password=test;";
+        var normalizedDb = ConnectionStringHelper.Normalize(dockerDb);
+        var builderDb = new Npgsql.NpgsqlConnectionStringBuilder(normalizedDb);
+#pragma warning disable CS0618
+        Assert.False(builderDb.TrustServerCertificate);
+#pragma warning restore CS0618
     }
 
     [Fact]

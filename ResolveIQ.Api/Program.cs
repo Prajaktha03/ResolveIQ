@@ -238,6 +238,30 @@ builder.Services.AddSwaggerGen(options =>
 
 var app = builder.Build();
 
+// Safe diagnostic log of effective PostgreSQL configuration (no credentials or connection strings logged)
+if (!string.IsNullOrWhiteSpace(connectionString))
+{
+    try
+    {
+        var diag = new Npgsql.NpgsqlConnectionStringBuilder(connectionString);
+        app.Logger.LogInformation(
+            "PostgreSQL configured: Host={Host}, Port={Port}, Database={Database}, SslMode={SslMode}, TrustServerCertificate={TrustServerCertificate}, GssEncryptionMode={GssEncryptionMode}, Timeout={Timeout}s",
+            diag.Host,
+            diag.Port,
+            diag.Database,
+            diag.SslMode,
+#pragma warning disable CS0618
+            diag.TrustServerCertificate,
+#pragma warning restore CS0618
+            diag.GssEncryptionMode,
+            diag.Timeout);
+    }
+    catch
+    {
+        // Suppress diagnostic errors
+    }
+}
+
 // One-time command-line Admin setup
 if (Environment.GetEnvironmentVariable("RESOLVEIQ_SETUP_ADMIN") == "true")
 {
